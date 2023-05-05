@@ -1,7 +1,8 @@
 package com.example.restjava.entity;
 
+// класс с агрегирующими значениями
 public class AgregateValues {
-    private double minMediana;
+    private double minMediana;                                  // агрегирующие значения
     private double maxMediana;
     private double middleMediana;
     private double minMidddleValue;
@@ -12,7 +13,7 @@ public class AgregateValues {
 
     public double getMinMediana() {
         return minMediana;
-    }
+    }       // геттеры
 
     public double getMaxMediana() {
         return maxMediana;
@@ -36,7 +37,7 @@ public class AgregateValues {
 
     public void setMinMediana(double minMediana) {
         this.minMediana = minMediana;
-    }
+    }   // сеттеры
 
     public void setMaxMediana(double maxMediana) {
         this.maxMediana = maxMediana;

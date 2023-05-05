@@ -8,19 +8,17 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 // сервис для работы с БД
 @Service
-public class Repository {
+public class RepositoryService {
     private IRepository repository;
 
     @Autowired
-    public Repository(IRepository repository){
+    public RepositoryService(IRepository repository){
         this.repository = repository;
     }
 
     // добавление объекта в БД
     public void save(Numbers numbers, ResultPair resultPair){
-        if(!contains(numbers)){
-            repository.save(new DbEntity(numbers, resultPair));
-        }
+        repository.save(new DbEntity(numbers, resultPair));
     }
 
     // получение всех объектов из БД
@@ -28,6 +26,7 @@ public class Repository {
         return repository.findAll();
     }
 
+    // получение результата из БД по входным данным
     public ResultPair get(Numbers numbers){
         for(DbEntity entity:getAll()){
             if(entity.getNumbers().equals(numbers.toString()))
@@ -36,6 +35,7 @@ public class Repository {
         return null;
     }
 
+    // существует ли объект с такими входными данными в БД
     public boolean contains(Numbers numbers){
         DbEntity entity = new DbEntity(numbers, new ResultPair());
         return getAll().stream().anyMatch(e -> e.equals(entity));

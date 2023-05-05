@@ -1,7 +1,7 @@
 package com.example.restjava.controllers;
 
 import com.example.restjava.database.DbEntity;
-import com.example.restjava.database.Repository;
+import com.example.restjava.database.RepositoryService;
 import com.example.restjava.entity.*;
 import com.example.restjava.exceptions.ServerException;
 import com.example.restjava.memory.InMemoryStorage;
@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,25 +31,25 @@ public class ResultPairController {
     private CounterService counterService;                                      // счетчик
     private InMemoryStorage inMemoryStorage;                                    // кэш
     private AgregateService agregateService;                                    // агрегирующий сервис
-    private Repository repository;                                              // БД
+    private RepositoryService repositoryService;                                // БД
 
     @Autowired
     public ResultPairController(MathService service, NumbersValidator validator,
                                 CounterService counterService, InMemoryStorage inMemoryStorage,
-                                AgregateService agregateService, Repository repository){
+                                AgregateService agregateService, RepositoryService repositoryService){
         this.mathService = service;
         this.validator = validator;
         this.counterService = counterService;
         this.inMemoryStorage = inMemoryStorage;
         this.agregateService = agregateService;
-        this.repository = repository;
+        this.repositoryService = repositoryService;
     }
 
     @GetMapping("/getresultpair")
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<Object> getResultPair(int[] nums) {
        Numbers numbers = new Numbers(nums);
-        ErrorList errors = validator.Validate((numbers));                          // получение ошибок валидации
+        ErrorList errors = validator.Validate((numbers));                       // получение ошибок валидации
         if(!errors.isEmpty()) {                                                 // есть ошибки валидации
             errors.setStatus(HttpStatus.BAD_REQUEST.name());                        // установка статуса
             logger.error("Parameter is not valid");                                 // логирование ошибки
@@ -61,17 +60,23 @@ public class ResultPairController {
             counterService.incrementSynchronizedCount();                        // инкрементирование счетчиков
             counterService.incrementUnsynchronizedCount();
 
-            ResultPair resultPair = mathService.getResult(numbers);             //получение результата
+            ResultPair resultPair;                                              // выходные данные
 
-            // асинхронное сохранение результатов в кэше и БД
+            // данные уже есть в БД
+            if(repositoryService.contains(numbers)) resultPair = repositoryService.get(numbers);
+            else {                                                              // данных нет в БД
+                resultPair = mathService.getResult(numbers);                         // получение результата
+                CompletableFuture.runAsync(()-> repositoryService.save(numbers, resultPair));// асинхронное сохранение
+            }
+
+            // асинхронное сохранение результатов в кэше
             CompletableFuture.runAsync(()->inMemoryStorage.add(numbers, resultPair));
-            CompletableFuture.runAsync(()->repository.save(numbers, resultPair));
 
             return ResponseEntity.ok(resultPair);
-        } catch(ServerException exc){                                           //ловим ошибку сервера
-            logger.error(exc.getMessage());                                     //логгирование
-            errors.add(exc.getMessage());                                       //+ 1 ошибка
-            errors.setStatus(HttpStatus.BAD_REQUEST.name());                    //установка статуса
+        } catch(ServerException exc){                                           // ловим ошибку сервера
+            logger.error(exc.getMessage());                                     // логгирование
+            errors.add(exc.getMessage());                                       // + 1 ошибка
+            errors.setStatus(HttpStatus.BAD_REQUEST.name());                    // установка статуса
             return new ResponseEntity<>(errors, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -79,7 +84,7 @@ public class ResultPairController {
     @PostMapping("/getresultpairs")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public ResponseEntity<Object> getResultPairs(@ModelAttribute("parameters") List<BulkParameter> parameters){
+    public ResponseEntity<BulkResultObject> getResultPairs(@RequestBody List<BulkParameter> parameters){
         ErrorList errors = new ErrorList();                                     // все ошибки валидации
         parameters = parameters.stream().filter(p->{
             ErrorList tempErrors = validator.Validate(p.toNumbers());               // проверка валидности параметра
@@ -94,17 +99,24 @@ public class ResultPairController {
             counterService.incrementSynchronizedCount();                            // инкрементирование счетчиков
             counterService.incrementUnsynchronizedCount();
 
-            ResultPair resultPair = mathService.getResult(numbers);                 // создание выходного объекта
-            resultMap.put(numbers, resultPair);                                     // заносим вх. и вых. объекты в мэп
-            CompletableFuture.runAsync(() -> repository.save(numbers, resultPair)); // асинхронное сохранение в БД
+            ResultPair resultPair;                                              // выходные данные
+
+            // данные есть в БД
+            if(repositoryService.contains(numbers)) resultPair = repositoryService.get(numbers);
+            else {                                                              // данных нет в БД
+                resultPair = mathService.getResult(numbers);                            // получение результата
+                CompletableFuture.runAsync(() -> repositoryService.save(numbers, resultPair)); // асинхронное сохранение в БД
+            }
+
+            resultMap.put(numbers, resultPair);                                 // заносим вх. и вых. объекты в мэп
         });
 
         // асинхронный подсчет агрегирующих значений
         AgregateValues agregateValues = new AgregateValues();
         agregateService.getAgregateValues(resultMap.values(), agregateValues);
 
-        // добавление в кэш
-        resultMap.entrySet().stream().forEach(
+
+        resultMap.entrySet().stream().forEach(                                  // добавление в кэш
                 e -> inMemoryStorage.add(e.getKey(), e.getValue()));
         return ResponseEntity.ok(new BulkResultObject(resultMap.values(), errors, agregateValues));
     }
@@ -121,7 +133,7 @@ public class ResultPairController {
     @GetMapping("/getdb")
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<List<DbEntity>> getDb(){                      // получение данных из БД
-        return ResponseEntity.ok(repository.getAll());
+        return ResponseEntity.ok(repositoryService.getAll());
     }
 
 
@@ -138,12 +150,3 @@ public class ResultPairController {
         return ResponseEntity.ok(counterService.getCounters());
     }
 }
-
-
-
-/*        parameters.stream().filter(p -> {                                       // фильтрация списка параметров
-            ErrorList tempErrors = validator.Validate(p.toNumbers());               // проверка валидности параметра
-            if(!tempErrors.isEmpty()) errors.add(tempErrors);                       // ошибки есть
-            return tempErrors.isEmpty();
-        });
-*/

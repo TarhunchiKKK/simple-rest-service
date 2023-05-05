@@ -1,7 +1,7 @@
 package com.example.restjava.controllers;
 
 import com.example.restjava.database.DbEntity;
-import com.example.restjava.database.Repository;
+import com.example.restjava.database.RepositoryService;
 import com.example.restjava.entity.*;
 import com.example.restjava.exceptions.ServerException;
 import com.example.restjava.memory.InMemoryStorage;
@@ -15,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.*;
@@ -42,11 +41,11 @@ public class ResultPairControllerTest {
     private AgregateService agregateService;
 
     @Mock
-    private Repository repository;
+    private RepositoryService repositoryService;
 
     @InjectMocks
     private ResultPairController controller = new ResultPairController(mathService,
-            validator, counterService, inMemoryStorage, agregateService, repository);
+            validator, counterService, inMemoryStorage, agregateService, repositoryService);
 
 
     // тест с ошибками валидации
@@ -70,6 +69,7 @@ public class ResultPairControllerTest {
     public void testGetResultPair2(){
         int nums[] = new int[]{1,2,3,4};
 
+        when(repositoryService.contains(isA(Numbers.class))).thenReturn(false);
         when(validator.Validate(isA(Numbers.class))).thenReturn(new ErrorList());
         when(mathService.getResult(isA(Numbers.class))).thenReturn(new ResultPair(2.0, 2.0));
 
@@ -87,6 +87,7 @@ public class ResultPairControllerTest {
 
         when(validator.Validate(isA(Numbers.class))).thenReturn(new ErrorList());
         when(mathService.getResult(isA(Numbers.class))).thenThrow(ServerException.class);
+        when(repositoryService.contains(isA(Numbers.class))).thenReturn(false);
 
         ResponseEntity<Object> responseEntity = controller.getResultPair(nums);
         ErrorList errors = (ErrorList)responseEntity.getBody();
@@ -105,10 +106,10 @@ public class ResultPairControllerTest {
         when(validator.Validate(isA(Numbers.class))).thenReturn(new ErrorList());
         when(mathService.getResult(isA(Numbers.class))).thenReturn(new ResultPair(1.0, 1.0));
 
-        doNothing().when(repository).save(isA(Numbers.class), isA(ResultPair.class));
+        doNothing().when(repositoryService).save(isA(Numbers.class), isA(ResultPair.class));
         doNothing().when(inMemoryStorage).add(isA(Numbers.class), isA(ResultPair.class));
 
-        ResponseEntity<Object> responseEntity = controller.getResultPairs(parameters);
+        ResponseEntity<BulkResultObject> responseEntity = controller.getResultPairs(parameters);
         BulkResultObject resultObject = (BulkResultObject)responseEntity.getBody();
 
         assertNotNull(resultObject);
@@ -135,7 +136,7 @@ public class ResultPairControllerTest {
         entities.add(new DbEntity(new Numbers(new int[]{1,2,3,4}), new ResultPair(2.0, 2.0)));
         entities.add(new DbEntity(new Numbers(new int[]{5,6,7,8}), new ResultPair(6.0, 6.0)));
 
-        when(repository.getAll()).thenReturn(entities);
+        when(repositoryService.getAll()).thenReturn(entities);
         List<DbEntity> list = controller.getDb().getBody();
 
         assertNotNull(list);

@@ -2,6 +2,7 @@ package com.example.restjava.entity;
 
 import java.util.Objects;
 
+// класс со счетчиками
 public class Counters {
     private int synchronizedCounter;
     private int unsynchronizedCounter;
@@ -10,6 +11,7 @@ public class Counters {
         unsynchronizedCounter = u;
     }
 
+    // сброс счетчиков
     public void resetCounters(){
         synchronizedCounter = unsynchronizedCounter = 0;
     }

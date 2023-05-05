@@ -30,6 +30,7 @@ public class AgregateService {
         }
     };
 
+    // асинхронное получение агрегирующих значений
     public void getAgregateValues(Collection<ResultPair> collection, AgregateValues agregateValues){
         CompletableFuture.runAsync(()->agregateValues.setMinMediana((getMinMediana(collection))));
         CompletableFuture.runAsync(()->agregateValues.setMaxMediana(getMaxMediana(collection)));
