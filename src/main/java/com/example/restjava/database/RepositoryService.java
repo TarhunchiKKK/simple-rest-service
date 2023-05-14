@@ -5,6 +5,7 @@ import com.example.restjava.entity.ResultPair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+
 import java.util.List;
 // сервис для работы с БД
 @Service
@@ -38,6 +39,19 @@ public class RepositoryService {
     // существует ли объект с такими входными данными в БД
     public boolean contains(Numbers numbers){
         DbEntity entity = new DbEntity(numbers, new ResultPair());
-        return getAll().stream().anyMatch(e -> e.equals(entity));
+        return getAll().stream().anyMatch(e -> e.getNumbers().equals(entity.getNumbers()));
+    }
+
+    // получить ко-во элементов в БД
+    public long size(){
+        return repository.count();
+    }
+
+    // получить элемент из БД по его id
+    public DbEntity getById(long id){
+        for(DbEntity entity:getAll()){
+            if(entity.getId() == id) return entity;     // элемент с таким id найден
+        }
+        return null;                                    // элемент с таким id не найден
     }
 }

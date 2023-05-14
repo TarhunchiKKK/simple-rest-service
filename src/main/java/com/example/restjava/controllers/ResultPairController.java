@@ -149,4 +149,48 @@ public class ResultPairController {
     public ResponseEntity<Counters> getCounters(){                      // получение счетчиков
         return ResponseEntity.ok(counterService.getCounters());
     }
+
+
+    @GetMapping("/getresultpairasync")
+    @ResponseBody
+    public ResponseEntity<Object> getResultPairAsync(int[] nums){
+        Numbers numbers = new Numbers(nums);
+        ErrorList errors = validator.Validate((numbers));                       // получение ошибок валидации
+        if(!errors.isEmpty()) {                                                 // есть ошибки валидации
+            errors.setStatus(HttpStatus.BAD_REQUEST.name());                        // установка статуса
+            logger.error("Parameter is not valid");                                 // логирование ошибки
+            return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        }
+
+        try{
+            counterService.incrementSynchronizedCount();                        // инкрементирование счетчиков
+            counterService.incrementUnsynchronizedCount();
+
+
+            // данные уже есть в БД
+            if(repositoryService.contains(numbers)) {
+                return ResponseEntity.ok("Your result is in already in db");
+            }
+
+            // данных нет в БД
+            ResultPair resultPair = mathService.getResult(numbers);                      // получение результата
+            long nextId = repositoryService.size() + 1;                                  // id нового  объекта
+            CompletableFuture.runAsync(()-> repositoryService.save(numbers, resultPair));// асинхронное сохранение
+
+            // асинхронное сохранение результатов в кэше
+            CompletableFuture.runAsync(()->inMemoryStorage.add(numbers, resultPair));
+            return ResponseEntity.ok(new AsyncResultEntity((nextId)));
+        } catch(ServerException exc){                                           // ловим ошибку сервера
+            logger.error(exc.getMessage());                                     // логгирование
+            errors.add(exc.getMessage());                                       // + 1 ошибка
+            errors.setStatus(HttpStatus.BAD_REQUEST.name());                    // установка статуса
+            return new ResponseEntity<>(errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/getbyid")
+    @ResponseBody
+    public ResponseEntity<DbEntity> getById(long id){
+        return ResponseEntity.ok(repositoryService.getById(id));
+    }
 }

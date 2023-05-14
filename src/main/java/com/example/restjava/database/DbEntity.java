@@ -4,6 +4,8 @@ import com.example.restjava.entity.Numbers;
 import com.example.restjava.entity.ResultPair;
 import jakarta.persistence.*;
 
+import java.util.Objects;
+
 
 // сущность БД
 @Entity
@@ -69,4 +71,5 @@ public class DbEntity {
     public void setMediana(double mediana) {
         this.mediana = mediana;
     }
+
 }
