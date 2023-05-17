@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -151,6 +152,19 @@ public class ResultPairController {
     }
 
 
+
+// 8 лаба
+/*----------------------------------------------------------------------------------------------------------------*/
+
+    // получить сущность из БД по id
+    @GetMapping("/getbyid")
+    @ResponseBody
+    public ResponseEntity<DbEntity> getById(long id){
+        return ResponseEntity.ok(repositoryService.getById(id));
+    }
+
+
+    // асинхронный get-метод
     @GetMapping("/getresultpairasync")
     @ResponseBody
     public ResponseEntity<Object> getResultPairAsync(int[] nums){
@@ -166,20 +180,19 @@ public class ResultPairController {
             counterService.incrementSynchronizedCount();                        // инкрементирование счетчиков
             counterService.incrementUnsynchronizedCount();
 
-
             // данные уже есть в БД
             if(repositoryService.contains(numbers)) {
                 return ResponseEntity.ok("Your result is in already in db");
             }
 
-            // данных нет в БД
-            ResultPair resultPair = mathService.getResult(numbers);                      // получение результата
-            long nextId = repositoryService.size() + 1;                                  // id нового  объекта
-            CompletableFuture.runAsync(()-> repositoryService.save(numbers, resultPair));// асинхронное сохранение
+            long nextId = repositoryService.size() + 1;                         // следующий id
+            CompletableFuture.runAsync(() ->{
+                ResultPair resultPair = mathService.getResult(numbers);         // получение результата
+                repositoryService.save(numbers, resultPair, nextId);            // асинхронное сохранение
+                inMemoryStorage.add(numbers, resultPair);                       // сохранение в кэше
+            });
+            return ResponseEntity.ok(new AsyncResultEntity((nextId)));          // отправка id
 
-            // асинхронное сохранение результатов в кэше
-            CompletableFuture.runAsync(()->inMemoryStorage.add(numbers, resultPair));
-            return ResponseEntity.ok(new AsyncResultEntity((nextId)));
         } catch(ServerException exc){                                           // ловим ошибку сервера
             logger.error(exc.getMessage());                                     // логгирование
             errors.add(exc.getMessage());                                       // + 1 ошибка
@@ -188,9 +201,21 @@ public class ResultPairController {
         }
     }
 
-    @GetMapping("/getbyid")
+    // асинхронный post-метод
+    @PostMapping("/getresultpairsasync")
+    @ResponseStatus(HttpStatus.OK)
     @ResponseBody
-    public ResponseEntity<DbEntity> getById(long id){
-        return ResponseEntity.ok(repositoryService.getById(id));
+    public ResponseEntity<List<Long>> getResultPairsAsync(@RequestBody List<BulkParameter> parameters){
+        List<Long> ids = new ArrayList<>();                                             // список id
+        parameters.forEach(p->{
+            long nextId = repositoryService.getNextId();
+            ids.add(nextId);
+            CompletableFuture.runAsync(()->{
+                Numbers numbers = p.toNumbers();                                                   // создание входного объекта
+                ResultPair resultPair = mathService.getResult(numbers);                            // получение результата
+                CompletableFuture.runAsync(() -> repositoryService.save(numbers, resultPair, nextId)); // асинхронное сохранение в БД
+            });
+        });
+        return ResponseEntity.ok(ids);
     }
 }

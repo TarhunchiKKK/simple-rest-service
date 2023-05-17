@@ -14,8 +14,8 @@ public class DbEntity {
     @Id                             // поле является ключем
     @Column(name = "id")            // имя столбца талицы для поля
     // стратегия генерации ключа
-    @SequenceGenerator(name = "resultsIdSeq", sequenceName = "results_id_seq", allocationSize = 1)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "resultsIdSeq")
+//    @SequenceGenerator(name = "resultsIdSeq", sequenceName = "results_id_seq", allocationSize = 1)
+//    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "resultsIdSeq")
     private Integer id;             // идентификатор
 
     @Column(name = "numbers")

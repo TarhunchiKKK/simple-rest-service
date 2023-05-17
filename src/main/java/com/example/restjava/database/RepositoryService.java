@@ -11,9 +11,10 @@ import java.util.List;
 @Service
 public class RepositoryService {
     private IRepository repository;
-
+    private long nextId;                        // текущий id
     @Autowired
     public RepositoryService(IRepository repository){
+        nextId = repository.count() + 1;
         this.repository = repository;
     }
 
@@ -53,5 +54,18 @@ public class RepositoryService {
             if(entity.getId() == id) return entity;     // элемент с таким id найден
         }
         return null;                                    // элемент с таким id не найден
+    }
+
+    // получить следующий id
+    public synchronized long getNextId(){
+        nextId++;
+        return nextId - 1;
+    }
+
+    // сохранить по индексу
+    public void save(Numbers numbers, ResultPair resultPair, long id){
+        DbEntity entity = new DbEntity(numbers, resultPair);
+        entity.setId((int)id);
+        repository.save(entity);
     }
 }
