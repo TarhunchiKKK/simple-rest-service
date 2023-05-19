@@ -176,29 +176,20 @@ public class ResultPairController {
             return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
         }
 
-        try{
-            counterService.incrementSynchronizedCount();                        // инкрементирование счетчиков
-            counterService.incrementUnsynchronizedCount();
+
+        counterService.incrementSynchronizedCount();                        // инкрементирование счетчиков
+        counterService.incrementUnsynchronizedCount();
 
             // данные уже есть в БД
-            if(repositoryService.contains(numbers)) {
-                return ResponseEntity.ok("Your result is in already in db");
-            }
+        if(repositoryService.contains(numbers)) {return ResponseEntity.ok("Your result is in already in db");}
 
-            long nextId = repositoryService.size() + 1;                         // следующий id
-            CompletableFuture.runAsync(() ->{
-                ResultPair resultPair = mathService.getResult(numbers);         // получение результата
-                repositoryService.save(numbers, resultPair, nextId);            // асинхронное сохранение
-                inMemoryStorage.add(numbers, resultPair);                       // сохранение в кэше
-            });
-            return ResponseEntity.ok(new AsyncResultEntity((nextId)));          // отправка id
-
-        } catch(ServerException exc){                                           // ловим ошибку сервера
-            logger.error(exc.getMessage());                                     // логгирование
-            errors.add(exc.getMessage());                                       // + 1 ошибка
-            errors.setStatus(HttpStatus.BAD_REQUEST.name());                    // установка статуса
-            return new ResponseEntity<>(errors, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        long nextId = repositoryService.size() + 1;                         // следующий id
+        CompletableFuture.runAsync(() ->{
+            ResultPair resultPair = mathService.getResult(numbers);         // получение результата
+            repositoryService.save(numbers, resultPair, nextId);            // асинхронное сохранение
+            inMemoryStorage.add(numbers, resultPair);                       // сохранение в кэше
+        });
+        return ResponseEntity.ok(new AsyncResultEntity((nextId)));          // отправка id
     }
 
     // асинхронный post-метод

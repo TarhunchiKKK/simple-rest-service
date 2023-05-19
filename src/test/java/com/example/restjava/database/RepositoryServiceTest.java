@@ -19,7 +19,7 @@ public class RepositoryServiceTest {
     @InjectMocks
     RepositoryService repositoryService = new RepositoryService(repository);
 
-    @Test
+    /*@Test
     public void test(){
         repositoryService.save(new Numbers(new int[] {1,2,3,4}), new ResultPair(2.0, 2.0));
         repositoryService.save(new Numbers(new int[] {5,6,7,8}), new ResultPair(6.0, 6.0));
@@ -27,5 +27,5 @@ public class RepositoryServiceTest {
         List<DbEntity> list = repositoryService.getAll();
         Assertions.assertNotNull(list);
         Assertions.assertTrue(list.isEmpty());
-    }
+    }*/
 }

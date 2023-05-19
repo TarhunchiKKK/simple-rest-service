@@ -150,4 +150,81 @@ public class ResultPairControllerTest {
         Counters counters = responseEntity.getBody();
         assertEquals(counters, new Counters(0, 0));
     }
+
+
+
+    /*--------------------------------------------------------------------------------------------------------------*/
+    @Test
+    public void testAsyncWithValidationErrors(){
+        int nums[] = new int[]{ 1, 1, 1, 1 };
+        ErrorList errors = new ErrorList();
+        errors.add("All numbers are equals");
+
+        when(validator.Validate(any(Numbers.class))).thenReturn(errors);
+
+        ErrorList errorList = (ErrorList) controller.getResultPairAsync(nums).getBody();
+        assertNotNull(errorList);
+        assertTrue(errorList.size() == errors.size());
+        assertEquals(errorList.getErrors().get(0), errors.getErrors().get(0));
+    }
+
+    @Test
+    public void testAsyncGood(){
+        int nums[] = new int[]{ 1, 2, 3, 4 };
+
+        when(validator.Validate(any(Numbers.class))).thenReturn(new ErrorList());
+        doNothing().when(counterService).incrementUnsynchronizedCount();
+        doNothing().when(counterService).incrementSynchronizedCount();
+        when(repositoryService.contains(any(Numbers.class))).thenReturn(false);
+        when(repositoryService.size()).thenReturn(Long.valueOf(6));
+        when(mathService.getResult(any(Numbers.class))).thenReturn(null);
+        doNothing().when(repositoryService).save(any(Numbers.class), any(ResultPair.class), any(Long.class));
+        doNothing().when(inMemoryStorage).add(any(Numbers.class), any(ResultPair.class));
+
+        AsyncResultEntity result = (AsyncResultEntity) controller.getResultPairAsync(nums).getBody();
+        assertNotNull(result);
+        assertTrue(result.getId() == 7);
+        assertEquals(result.getMessage(), "Your element can be getted from db by index:");
+    }
+
+    @Test
+    public void testBulkAsync(){
+        int id = 1;
+        BulkParameter b1 = new BulkParameter(1,2,3,4);
+        BulkParameter b2 = new BulkParameter(5,6,7,8);
+        BulkParameter b3 = new BulkParameter(9,10,11,12);
+        BulkParameter b4 = new BulkParameter(13,14,15,16);
+        List<BulkParameter> parameters = new ArrayList<>();
+        parameters.add(b1);
+        parameters.add(b2);
+        parameters.add(b3);
+        parameters.add(b4);
+
+        when(repositoryService.getNextId()).thenReturn(
+                Long.valueOf(1), Long.valueOf(2),Long.valueOf(3),Long.valueOf(4));
+        when(mathService.getResult(any(Numbers.class))).thenReturn(null);
+        //doNothing().when(repositoryService).save(any(Numbers.class), any(ResultPair.class), any(Long.class));
+
+        List<Long> list = controller.getResultPairsAsync(parameters).getBody();
+        assertNotNull(list);
+        assertEquals(list.get(0), 1);
+        assertEquals(list.get(1), 2);
+        assertEquals(list.get(2), 3);
+        assertEquals(list.get(3), 4);
+    }
+
+    @Test
+    public void testGetById(){
+        int id = 5;
+        Numbers numbers = new Numbers(new int[]{1,2,3,4});
+        ResultPair resultPair = new ResultPair(2.0, 2.0);
+
+        when(repositoryService.getById(any(Long.class))).thenReturn(new DbEntity(numbers, resultPair));
+
+        DbEntity entity = (DbEntity)controller.getById(id).getBody();
+        assertNotNull(entity);
+        assertEquals(entity.getNumbers(), numbers.toString());
+        assertEquals(entity.getMediana(), resultPair.getMediana());
+        assertEquals(entity.getMiddleValue(), resultPair.getMiddleValue());
+    }
 }
