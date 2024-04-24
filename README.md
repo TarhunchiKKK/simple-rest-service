@@ -1,6 +1,6 @@
 # A simple rest service on Spring
 
-### Задание:
+### Task:
 The service should take 4 numbers and return the mean and median for the parameters provided.
 
 1. Create and run locally a simple web/REST service using Spring (Spring Boot) and maven.
